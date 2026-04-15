@@ -161,23 +161,6 @@ class TransformerLayer(nn.Module):
         x = residual + self.dropout(x)
         return x
 
-class ConvLayer(nn.Module):
-    def __init__(self, dim, ffn_dim):
-        super().__init__()
-        self.conv = nn.Conv1d(dim, ffn_dim, kernel_size=3, padding=1)
-        self.activator = nn.SiLU()
-    def forward(self, x):
-        return self.activator(self.conv(x))
-
-class GateLayer(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.gate = nn.Linear(dim, dim)
-        self.sigmoid = nn.Sigmoid()
-    def forward(self, x, y):
-        coef = self.sigmoid(self.gate(x))
-        return x * coef + y * (1 - coef)
-
 class SmallLlm(nn.Module):
     def __init__(self, max_token, dim, ffn_dim, heads, layers):
         super().__init__()
@@ -186,7 +169,6 @@ class SmallLlm(nn.Module):
         self.transformer_layers = nn.ModuleList([
             TransformerLayer(dim, ffn_dim, heads, True, 10000) for _ in range(layers)
         ])
-        # self.gate = GateLayer(dim)
         self.out = nn.Linear(dim, max_token)
     
     def forward(self, x, attention_mask=None):
@@ -196,7 +178,6 @@ class SmallLlm(nn.Module):
         for i in range(1, self.layers - 1):
             x = self.transformer_layers[i](x, attention_mask)
         x = self.transformer_layers[-1](x, attention_mask)
-        # x = self.gate(x, y)
         x = self.out(x)
         return x
     
@@ -218,7 +199,6 @@ class SmallLlm(nn.Module):
         x, kv_cache[-1] = self.transformer_layers[-1].forward_with_cache(
             x, attention_mask=attention_mask, kv_cache=kv_cache[-1]
         )
-        # x = self.gate(x, y)
         x = self.out(x)
         return x, kv_cache
     
