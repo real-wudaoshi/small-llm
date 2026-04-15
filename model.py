@@ -236,7 +236,8 @@ class SmallLlm(nn.Module):
             logits = out[:, -1, :].squeeze(0)
             next_id = self.sample_next_id(logits, temperature, top_p, top_k, penalty_cache)
             result.append(next_id)
-            penalty_cache[next_id] = (penalty_cache[next_id] * repetition_penalty + 1) / 2
+            penalty_cache[next_id] = penalty_cache[next_id] * repetition_penalty
+            penalty_cache = (torch.ones((self.embed.weight.shape[0]), device=self.embed.weight.device) + penalty_cache) / 2
             x = torch.tensor([next_id], dtype=torch.long, device=x.device)
             if next_id == config.EOS_ID:
                 break

@@ -1,4 +1,4 @@
-# small-llm-main
+# Small LLM
 
 一个基于 PyTorch 的小型语言模型实验项目，覆盖从分词器训练、预训练到推理和简单评估的完整流程，适合学习 Transformer 类模型的最小可运行链路。
 
