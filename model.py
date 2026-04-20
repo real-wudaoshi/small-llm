@@ -202,8 +202,11 @@ class SmallLlm(nn.Module):
         x = self.out(x)
         return x, kv_cache
     
-    def sample_next_id(self, logits, temperature, top_p, top_k, penalty_cache):
-        probs = torch.softmax(logits.reshape(-1) / temperature, dim=-1) / penalty_cache.reshape(-1)
+    def sample_next_id(self, logits, temperature, top_p, top_k, penalty):
+        logits = logits.reshape(-1)
+        probs = torch.softmax(logits.reshape(-1) / temperature, dim=-1)
+        probs /= penalty.reshape(-1)
+        probs = probs / probs.sum()
         top_k = max(1, min(int(top_k), probs.shape[0]))
         top_p = float(min(max(top_p, 1e-8), 1.0))
 
@@ -223,9 +226,9 @@ class SmallLlm(nn.Module):
         return int(candidate_token_ids[sampled_pos].item())
 
 
-    def generate(self, x, temperature=0.5, top_p=0.3, top_k=10, max_tokens=20, repetition_penalty=1.5):
+    def generate(self, x, temperature=0.5, top_p=0.3, top_k=10, max_tokens=20, repetition_penalty=1.2):
         x = torch.as_tensor(x, dtype=torch.long, device=self.embed.weight.device)
-        penalty_cache = torch.ones((self.embed.weight.shape[0]), device=self.embed.weight.device)
+        penalty = torch.ones((self.embed.weight.shape[0]), device=self.embed.weight.device)
         kv_cache = [None] * self.layers
         result = []
         for _ in range(max_tokens):
@@ -234,11 +237,10 @@ class SmallLlm(nn.Module):
             )
             out = nn.functional.log_softmax(out, dim=-1)
             logits = out[:, -1, :].squeeze(0)
-            next_id = self.sample_next_id(logits, temperature, top_p, top_k, penalty_cache)
+            next_id = self.sample_next_id(logits, temperature, top_p, top_k, penalty)
             result.append(next_id)
-            penalty_cache[next_id] = penalty_cache[next_id] * repetition_penalty
-            penalty_cache = (torch.ones((self.embed.weight.shape[0]), device=self.embed.weight.device) + penalty_cache) / 2
             x = torch.tensor([next_id], dtype=torch.long, device=x.device)
+            penalty[next_id] = repetition_penalty
             if next_id == config.EOS_ID:
                 break
         return result

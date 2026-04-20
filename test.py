@@ -19,5 +19,5 @@ while True:
     text = input("Enter a prompt: ")
     tokens = tokenizer.encode(text).ids
     tokens = torch.tensor(tokens, dtype=torch.long, device=device)
-    out = model.generate(tokens, temperature=0.7, top_p=0.8, top_k=30, max_tokens=200, repetition_penalty=1.5)
+    out = model.generate(tokens, temperature=0.5, top_p=0.7, top_k=30, max_tokens=200, repetition_penalty=1.20)
     print(tokenizer.decode(out))
